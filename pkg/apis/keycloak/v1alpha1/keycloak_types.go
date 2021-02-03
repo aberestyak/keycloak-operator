@@ -88,7 +88,9 @@ type DeploymentSpec struct {
 }
 
 type KeycloakDeploymentSpec struct {
-	DeploymentSpec `json:",inline"`
+	DeploymentSpec     `json:",inline"`
+	Image              string `json:",image"`
+	InitContainerImage string `json:",initContainerImage"`
 	// Experimental section
 	// NOTE: This section might change or get removed without any notice. It may also cause
 	// the deployment to behave in an unpredictable fashion. Please use with care.

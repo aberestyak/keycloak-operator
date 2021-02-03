@@ -1,20 +1,23 @@
-FROM registry.svc.ci.openshift.org/openshift/release:golang-1.13 AS build-env
+ARG PROXY_REGISTRY=
 
-COPY . /src/
+FROM ${PROXY_REGISTRY:+$PROXY_REGISTRY/}golang:1.15.3-alpine3.12 as builder
 
-RUN cd /src && \
-    make code/compile && \
-    echo "Build SHA1: $(git rev-parse HEAD)" && \
-    echo "$(git rev-parse HEAD)" > /src/BUILD_INFO
+ARG VERSION
 
-# final stage
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+COPY . /go/src/keycloak-operator/
+WORKDIR /go/src/keycloak-operator/cmd/keycloak-operator
 
-##LABELS
+ENV CGO_ENABLED=0 \
+    GO111MODULE=on
 
-RUN microdnf update && microdnf clean all && rm -rf /var/cache/yum/*
+RUN go install
 
-COPY --from=build-env /src/BUILD_INFO /src/BUILD_INFO
-COPY --from=build-env /src/tmp/_output/bin/keycloak-operator /usr/local/bin
+FROM ${PROXY_REGISTRY:+$PROXY_REGISTRY/}alpine:3.12.1 as runtime
 
-ENTRYPOINT ["/usr/local/bin/keycloak-operator"]
+
+COPY --from=builder /go/bin/keycloak-operator /keycloak-operator
+
+RUN adduser -S appuser -u 1000 -G root
+USER 1000
+
+ENTRYPOINT ["/keycloak-operator"]

@@ -151,7 +151,7 @@ code/run:
 
 .PHONY: code/compile
 code/compile:
-	@GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=${CGO_ENABLED} go build -o=$(COMPILE_TARGET) -mod=vendor ./cmd/manager
+	@GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=${CGO_ENABLED} go install -mod=vendor ./cmd/manager/main.go
 
 .PHONY: code/gen
 code/gen:

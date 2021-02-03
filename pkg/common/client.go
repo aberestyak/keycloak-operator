@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/berestyak/keycloak-operator/pkg/model"
 	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/model"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -726,7 +726,7 @@ func (c *Client) login(user, pass string) error {
 
 // defaultRequester returns a default client for requesting http endpoints
 func defaultRequester() Requester {
-	transport := http.DefaultTransport.(*http.Transport).Clone() // nolint
+	transport := http.DefaultTransport.(*http.Transport).Clone()      // nolint
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint
 
 	c := &http.Client{Transport: transport, Timeout: time.Second * 10}

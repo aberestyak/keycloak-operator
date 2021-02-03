@@ -3,9 +3,9 @@ package keycloakbackup
 import (
 	"testing"
 
+	"github.com/berestyak/keycloak-operator/pkg/model"
 	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/keycloak/keycloak-operator/pkg/common"
-	"github.com/keycloak/keycloak-operator/pkg/model"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v1beta1"

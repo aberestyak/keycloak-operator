@@ -9,7 +9,7 @@ import (
 
 	v1beta12 "k8s.io/api/policy/v1beta1"
 
-	"github.com/keycloak/keycloak-operator/pkg/model"
+	"github.com/berestyak/keycloak-operator/pkg/model"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"

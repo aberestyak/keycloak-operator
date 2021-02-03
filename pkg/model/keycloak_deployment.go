@@ -206,7 +206,7 @@ func KeycloakDeployment(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) *v13.Statefu
 					Containers: []v1.Container{
 						{
 							Name:  KeycloakDeploymentName,
-							Image: Images.Images[KeycloakImage],
+							Image: getKeycloakImageFromCR(cr),
 							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: KeycloakServicePort,
@@ -251,7 +251,7 @@ func KeycloakDeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.State
 	reconciled.Spec.Template.Spec.Containers = []v1.Container{
 		{
 			Name:    KeycloakDeploymentName,
-			Image:   Images.Images[KeycloakImage],
+			Image:   getKeycloakImageFromCR(cr),
 			Args:    cr.Spec.KeycloakDeploymentSpec.Experimental.Args,
 			Command: cr.Spec.KeycloakDeploymentSpec.Experimental.Command,
 			Ports: []v1.ContainerPort{
@@ -314,6 +314,14 @@ func addVolumeMountsFromKeycloakCR(cr *v1alpha1.Keycloak, mountedVolumes []v1.Vo
 		}
 	}
 	return mountedVolumes
+}
+
+func getKeycloakImageFromCR(cr *v1alpha1.Keycloak) string {
+	if cr.Spec.KeycloakDeploymentSpec.Image != "" {
+		return cr.Spec.KeycloakDeploymentSpec.Image
+	} else {
+		return DefaultKeycloakImage
+	}
 }
 
 func KeycloakVolumes(cr *v1alpha1.Keycloak) []v1.Volume {

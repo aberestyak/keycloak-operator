@@ -7,6 +7,7 @@
 main
 build
 tmp
+*__debug_bin
 
 # OpenAPI
 bin/openapi-gen

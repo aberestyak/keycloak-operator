@@ -40,14 +40,14 @@ func (p *ProfileManager) GetKeycloakOrRHSSOImage(cr *v1alpha1.Keycloak) string {
 	if p.IsRHSSO(cr) {
 		return Images.Images[RHSSOImage]
 	}
-	return Images.Images[KeycloakImage]
+	return getKeycloakImageFromCR(cr)
 }
 
 func (p *ProfileManager) GetInitContainerImage(cr *v1alpha1.Keycloak) string {
 	if p.IsRHSSO(cr) {
 		return Images.Images[RHSSOInitContainer]
 	}
-	return Images.Images[KeycloakInitContainer]
+	return getKeycloakInitContainerImageFromCR(cr)
 }
 
 func (p *ProfileManager) getProfiles() []string {

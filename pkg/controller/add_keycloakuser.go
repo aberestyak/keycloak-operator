@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/berestyak/keycloak-operator/pkg/controller/keycloakuser"
+	"github.com/aberestyak/keycloak-operator/pkg/controller/keycloakuser"
 )
 
 func init() {

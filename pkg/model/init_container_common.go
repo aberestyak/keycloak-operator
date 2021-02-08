@@ -3,7 +3,7 @@ package model
 import (
 	"strings"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 )
 

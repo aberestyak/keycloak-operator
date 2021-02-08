@@ -9,7 +9,7 @@ import (
 
 	v1beta12 "k8s.io/api/policy/v1beta1"
 
-	"github.com/berestyak/keycloak-operator/pkg/model"
+	"github.com/aberestyak/keycloak-operator/pkg/model"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
@@ -21,10 +21,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	keycloakv1alpha1 "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/berestyak/keycloak-operator/pkg/common"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	keycloakv1alpha1 "github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/common"
 	"github.com/pkg/errors"
 
 	"k8s.io/api/extensions/v1beta1"

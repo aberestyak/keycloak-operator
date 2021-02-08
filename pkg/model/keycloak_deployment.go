@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

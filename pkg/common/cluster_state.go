@@ -9,9 +9,9 @@ import (
 	v13 "github.com/openshift/api/route/v1"
 	"k8s.io/api/extensions/v1beta1"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/berestyak/keycloak-operator/pkg/model"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/model"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	v12 "k8s.io/api/apps/v1"

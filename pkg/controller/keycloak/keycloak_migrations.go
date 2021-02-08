@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/berestyak/keycloak-operator/pkg/common"
-	"github.com/berestyak/keycloak-operator/pkg/model"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/common"
+	"github.com/aberestyak/keycloak-operator/pkg/model"
 	v13 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

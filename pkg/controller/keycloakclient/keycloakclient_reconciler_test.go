@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/berestyak/keycloak-operator/pkg/common"
-	"github.com/berestyak/keycloak-operator/pkg/model"
+	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/aberestyak/keycloak-operator/pkg/common"
+	"github.com/aberestyak/keycloak-operator/pkg/model"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"

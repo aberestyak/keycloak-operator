@@ -1,4 +1,4 @@
-module github.com/berestyak/keycloak-operator
+module github.com/aberestyak/keycloak-operator
 
 require (
 	github.com/coreos/prometheus-operator v0.40.0

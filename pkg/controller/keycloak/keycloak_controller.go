@@ -21,10 +21,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	kc "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/common"
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	keycloakv1alpha1 "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/common"
 	"github.com/pkg/errors"
 
 	"k8s.io/api/extensions/v1beta1"
@@ -255,7 +255,7 @@ func (r *ReconcileKeycloak) ManageSuccess(instance *v1alpha1.Keycloak, currentSt
 		instance.Status.InternalURL = fmt.Sprintf("https://%v.%v.svc:%v",
 			currentState.KeycloakService.Name,
 			currentState.KeycloakService.Namespace,
-			model.KeycloakServicePort)
+			model.KeycloakHTTPServicePort)
 	}
 
 	// Let the clients know where the admin credentials are stored

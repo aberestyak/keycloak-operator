@@ -11,11 +11,11 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/common"
 	"github.com/berestyak/keycloak-operator/pkg/model"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/common"
 	"github.com/stretchr/testify/assert"
 	v13 "k8s.io/api/apps/v1"
 )
@@ -557,14 +557,6 @@ func TestKeycloakReconciler_Test_Setting_Resources(t *testing.T) {
 	resourceListPostgres[v1.ResourceCPU] = resource50m
 	resourceListPostgres[v1.ResourceMemory] = resource100Mi
 
-	cr.Spec.KeycloakDeploymentSpec = v1alpha1.KeycloakDeploymentSpec{
-		DeploymentSpec: v1alpha1.DeploymentSpec{
-			Resources: v1.ResourceRequirements{
-				Requests: resourceListKeycloak,
-				Limits:   resourceListKeycloak,
-			},
-		},
-	}
 	cr.Spec.PostgresDeploymentSpec = v1alpha1.PostgresqlDeploymentSpec{
 		DeploymentSpec: v1alpha1.DeploymentSpec{
 			Resources: v1.ResourceRequirements{

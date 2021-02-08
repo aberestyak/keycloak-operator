@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -80,7 +80,7 @@ func (i *ClusterActionRunner) RunAll(desiredState DesiredClusterState) error {
 			log.Info(fmt.Sprintf("(%5d) %10s %s", index, "FAILED", msg))
 			return err
 		}
-		log.Info(fmt.Sprintf("(%5d) %10s %s", index, "SUCCESS", msg))
+		//log.Info(fmt.Sprintf("(%5d) %10s %s", index, "SUCCESS", msg))
 	}
 
 	return nil

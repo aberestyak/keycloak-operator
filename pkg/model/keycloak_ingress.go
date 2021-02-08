@@ -1,7 +1,7 @@
 package model
 
 import (
-	kc "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"k8s.io/api/extensions/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -21,9 +21,7 @@ func KeycloakIngress(cr *kc.Keycloak) *v1beta1.Ingress {
 			Labels: map[string]string{
 				"app": ApplicationName,
 			},
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-			},
+			Annotations: cr.Spec.ExternalAccess.Annotations,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -36,12 +34,18 @@ func KeycloakIngress(cr *kc.Keycloak) *v1beta1.Ingress {
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
 										ServiceName: ApplicationName,
-										ServicePort: intstr.FromInt(KeycloakServicePort),
+										ServicePort: intstr.FromInt(KeycloakHTTPServicePort),
 									},
 								},
 							},
 						},
 					},
+				},
+			},
+			TLS: []v1beta1.IngressTLS{
+				{
+					Hosts:      []string{ingressHost},
+					SecretName: ingressHost + "-tls",
 				},
 			},
 		},
@@ -52,6 +56,7 @@ func KeycloakIngressReconciled(cr *kc.Keycloak, currentState *v1beta1.Ingress) *
 	reconciled := currentState.DeepCopy()
 	reconciledHost := currentState.Spec.Rules[0].Host
 	reconciledSpecTLS := currentState.Spec.TLS
+	reconciled.ObjectMeta.Annotations = cr.Spec.ExternalAccess.Annotations
 	reconciled.Spec = v1beta1.IngressSpec{
 		TLS: reconciledSpecTLS,
 		Rules: []v1beta1.IngressRule{
@@ -64,7 +69,7 @@ func KeycloakIngressReconciled(cr *kc.Keycloak, currentState *v1beta1.Ingress) *
 								Path: "/",
 								Backend: v1beta1.IngressBackend{
 									ServiceName: ApplicationName,
-									ServicePort: intstr.FromInt(KeycloakServicePort),
+									ServicePort: intstr.FromInt(KeycloakHTTPServicePort),
 								},
 							},
 						},

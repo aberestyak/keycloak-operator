@@ -145,3 +145,54 @@ func MergeEnvs(a []v1.EnvVar, b []v1.EnvVar) []v1.EnvVar {
 	}
 	return a
 }
+
+func MergePorts(a []v1.ContainerPort, b []v1.ContainerPort) []v1.ContainerPort {
+	for _, bb := range b {
+		found := false
+		for _, aa := range a {
+			if aa.ContainerPort == bb.ContainerPort {
+				aa.Name = bb.Name
+				found = true
+				break
+			}
+		}
+		if !found {
+			a = append(a, bb)
+		}
+	}
+	return a
+}
+
+func MergeVolumeMounts(a []v1.VolumeMount, b []v1.VolumeMount) []v1.VolumeMount {
+	for _, bb := range b {
+		found := false
+		for _, aa := range a {
+			if aa.Name == bb.Name {
+				aa.Name = bb.Name
+				found = true
+				break
+			}
+		}
+		if !found {
+			a = append(a, bb)
+		}
+	}
+	return a
+}
+
+func MergeVolumes(a []v1.Volume, b []v1.Volume) []v1.Volume {
+	for _, bb := range b {
+		found := false
+		for _, aa := range a {
+			if aa.Name == bb.Name {
+				aa.Name = bb.Name
+				found = true
+				break
+			}
+		}
+		if !found {
+			a = append(a, bb)
+		}
+	}
+	return a
+}

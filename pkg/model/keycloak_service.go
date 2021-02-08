@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -28,8 +28,8 @@ func KeycloakService(cr *v1alpha1.Keycloak) *v1.Service {
 			},
 			Ports: []v1.ServicePort{
 				{
-					Port:       KeycloakServicePort,
-					TargetPort: intstr.FromInt(KeycloakServicePort),
+					Port:       KeycloakHTTPServicePort,
+					TargetPort: intstr.FromInt(KeycloakHTTPServicePort),
 					Name:       ApplicationName,
 					Protocol:   "TCP",
 				},
@@ -49,8 +49,8 @@ func KeycloakServiceReconciled(cr *v1alpha1.Keycloak, currentState *v1.Service) 
 	reconciled := currentState.DeepCopy()
 	reconciled.Spec.Ports = []v1.ServicePort{
 		{
-			Port:       KeycloakServicePort,
-			TargetPort: intstr.FromInt(KeycloakServicePort),
+			Port:       KeycloakHTTPServicePort,
+			TargetPort: intstr.FromInt(KeycloakHTTPServicePort),
 			Name:       ApplicationName,
 			Protocol:   "TCP",
 		},

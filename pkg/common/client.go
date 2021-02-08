@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/berestyak/keycloak-operator/pkg/model"
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -3,6 +3,7 @@ module github.com/berestyak/keycloak-operator
 require (
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-openapi/spec v0.19.7
+	github.com/imdario/mergo v0.3.8
 	github.com/integr8ly/grafana-operator/v3 v3.6.0
 	github.com/json-iterator/go v1.1.9
 	github.com/keycloak/keycloak-operator v0.0.0-20210127091446-48fe7d86eabe

@@ -3,8 +3,8 @@ package common
 import (
 	"context"
 
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/berestyak/keycloak-operator/pkg/model"
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"

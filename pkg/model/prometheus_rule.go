@@ -1,8 +1,8 @@
 package model
 
 import (
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"

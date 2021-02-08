@@ -20,6 +20,12 @@ type KeycloakSpec struct {
 	// It can then be used for targeting purposes.
 	// +optional
 	Unmanaged bool `json:"unmanaged,omitempty"`
+	// When set to true, operator will try to deploy serviceMonitor for Prometheus operator
+	// +optional
+	ServiceMonitor bool `json:"serviceMonitor,omitempty"`
+	// When set to true, operator will try to deploy grafanaDashboard for Grafana operator
+	// +optional
+	GrafanaDashboard bool `json:"grafanaDashboard,omitempty"`
 	// Contains configuration for external Keycloak instances. Unmanaged needs to be set to true to use this.
 	// +optional
 	External KeycloakExternal `json:"external"`
@@ -81,21 +87,14 @@ type KeycloakSpec struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
+type KeycloakDeploymentSpec struct {
+	corev1.PodSpec `json:"podSpec,omitempty"`
+}
+
 type DeploymentSpec struct {
 	// Resources (Requests and Limits) for the Pods.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-}
-
-type KeycloakDeploymentSpec struct {
-	DeploymentSpec     `json:",inline"`
-	Image              string `json:",image"`
-	InitContainerImage string `json:",initContainerImage"`
-	// Experimental section
-	// NOTE: This section might change or get removed without any notice. It may also cause
-	// the deployment to behave in an unpredictable fashion. Please use with care.
-	// +optional
-	Experimental ExperimentalSpec `json:"experimental,omitempty"`
 }
 
 type PostgresqlDeploymentSpec struct {
@@ -103,27 +102,12 @@ type PostgresqlDeploymentSpec struct {
 }
 
 type ExperimentalSpec struct {
-	// Arguments to the entrypoint. Translates into Container CMD.
-	// +optional
-	Args []string `json:"args,omitempty"`
-	// Container command. Translates into Container ENTRYPOINT.
-	// +optional
-	Command []string `json:"command,omitempty"`
-	// List of environment variables to set in the container.
-	// +optional
-	// +patchMergeKey=name
-	// +patchStrategy=merge
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name"`
-	// Additional volume mounts
-	// +optional
-	Volumes VolumesSpec `json:"volumes,omitempty"`
 }
 
-type VolumesSpec struct {
-	Items []VolumeSpec `json:"items,omitempty"`
-	// Permissions mode.
+type VolumeSpec struct {
+	// ConfigMap mount
 	// +optional
-	DefaultMode *int32 `json:"defaultMode,omitempty"`
+	ConfigMap *ConfigMapVolumeSpec `json:"configMap,omitempty"`
 }
 
 type ConfigMapVolumeSpec struct {
@@ -134,12 +118,6 @@ type ConfigMapVolumeSpec struct {
 	// ConfigMap mount details
 	// +optional
 	Items []corev1.KeyToPath `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
-}
-
-type VolumeSpec struct {
-	// ConfigMap mount
-	// +optional
-	ConfigMap *ConfigMapVolumeSpec `json:"configMap,omitempty"`
 }
 
 type KeycloakExternal struct {
@@ -155,6 +133,9 @@ type KeycloakExternalAccess struct {
 	// If set to true, the Operator will create an Ingress or a Route
 	// pointing to Keycloak.
 	Enabled bool `json:"enabled,omitempty"`
+	// Ingress annotations
+	// +optional
+	Annotations map[string]string `json:"annotations"`
 	// TLS Termination type for the external access. Setting this field to "reencrypt" will
 	// terminate TLS on the Ingress/Route level. Setting this field to "passthrough" will
 	// send encrypted traffic to the Pod. If unspecified, defaults to "reencrypt".

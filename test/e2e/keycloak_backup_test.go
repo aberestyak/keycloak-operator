@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	keycloakv1alpha1 "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/berestyak/keycloak-operator/pkg/model"
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

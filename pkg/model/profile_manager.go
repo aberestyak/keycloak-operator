@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 )
 
 const (
@@ -40,14 +40,14 @@ func (p *ProfileManager) GetKeycloakOrRHSSOImage(cr *v1alpha1.Keycloak) string {
 	if p.IsRHSSO(cr) {
 		return Images.Images[RHSSOImage]
 	}
-	return getKeycloakImageFromCR(cr)
+	return cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Image
 }
 
 func (p *ProfileManager) GetInitContainerImage(cr *v1alpha1.Keycloak) string {
 	if p.IsRHSSO(cr) {
 		return Images.Images[RHSSOInitContainer]
 	}
-	return getKeycloakInitContainerImageFromCR(cr)
+	return cr.Spec.KeycloakDeploymentSpec.InitContainers[findContainerInSlice(cr, "keycloak-extensions")].Image
 }
 
 func (p *ProfileManager) getProfiles() []string {

@@ -7,13 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/keycloak/keycloak-operator/pkg/common"
+	"github.com/berestyak/keycloak-operator/pkg/common"
 
 	"k8s.io/client-go/tools/record"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	kc "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

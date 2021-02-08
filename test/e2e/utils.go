@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	keycloakv1alpha1 "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/types"

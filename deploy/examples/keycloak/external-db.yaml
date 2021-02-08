@@ -1,0 +1,92 @@
+apiVersion: keycloak.org/v1alpha1
+kind: Keycloak
+metadata:
+  labels:
+      instance: keycloak
+      app: keycloak-instance
+  name: keycloak
+  namespace: keycloak
+spec:
+  ## Specify connection parameters in "keycloak"-db-secret
+  ## in format https://www.keycloak.org/docs/latest/server_installation/index.html#_external_database
+  externalDatabase:
+    enabled: true
+
+  ## Deploy serviceMonitor
+  serviceMonitor: true
+
+  ## Specify keycloak replicas
+  instances: 2
+
+  ## Specify ingress spec
+  externalAccess:
+    enabled: True
+    host: auth.local
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/ssl-redirect: "False"
+  extensions:
+    - "https://github.com/aerogear/keycloak-metrics-spi/releases/download/2.0.1/keycloak-metrics-spi-2.0.1.jar"
+
+  ## keycloak statefulSet specification
+  keycloakDeploymentSpec:
+    podSpec:
+      containers:
+      - name: keycloak
+        image: registry-proxy.rshbdev.ru/jboss/keycloak:12.0.2
+        ports:
+        - containerPort: 2000
+          protocol: TCP
+        env:
+        - name: DB_ADDR
+        ## Specify cluster PG host
+          value: stolon-proxy.stolon
+        - name: DB_DATABASE
+          value: keycloak
+        - name: KEYCLOAK_USER
+          valueFrom:
+            secretKeyRef:
+              key: ADMIN_USERNAME
+              name: credential-keycloak
+        - name: KEYCLOAK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: ADMIN_PASSWORD
+              name: credential-keycloak
+        - name: JAVA_OPTS
+          value: >-
+            -XX:+UseContainerSupport
+            -XX:MaxRAMPercentage=50.0
+            -XX:MinRAMPercentage=50.0
+            -Djava.net.preferIPv4Stack=true
+            -Djboss.modules.system.pkgs=$JBOSS_MODULES_SYSTEM_PKGS
+            -Djava.awt.headless=true
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "768Mi"
+          limits:
+            cpu: 1
+            memory: "768Mi"
+      initContainers:
+      - name: extensions-init
+        image: berestyak/keycloak-init-container:12.0.7
+        env:
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: EXTENSIONS_USERNAME
+              name: credential-keycloak
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: EXTENSIONS_USER_PASSWORD
+              name: credential-{{ .Values.instanceName}}
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  component: keycloak
+              topologyKey: kubernetes.io/hostname

@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,15 +103,16 @@ func getRHSSOEnv(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) []v1.EnvVar {
 		})
 	}
 
-	if len(cr.Spec.KeycloakDeploymentSpec.Experimental.Env) > 0 {
+	if len(cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Env) > 0 {
 		// We override Keycloak pre-defined envs with what user specified. Not the other way around.
-		env = MergeEnvs(cr.Spec.KeycloakDeploymentSpec.Experimental.Env, env)
+		env = MergeEnvs(cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Env, env)
 	}
 
 	return env
 }
 
 func RHSSODeployment(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) *v13.StatefulSet {
+	keycloakContainerPosition := findContainerInSlice(cr, KeycloakDeploymentName)
 	return &v13.StatefulSet{
 		ObjectMeta: v12.ObjectMeta{
 			Name:      KeycloakDeploymentName,
@@ -147,7 +148,7 @@ func RHSSODeployment(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) *v13.StatefulSe
 							Image: Images.Images[RHSSOImage],
 							Ports: []v1.ContainerPort{
 								{
-									ContainerPort: KeycloakServicePort,
+									ContainerPort: KeycloakHTTPSServicePort,
 									Protocol:      "TCP",
 								},
 								{
@@ -163,13 +164,13 @@ func RHSSODeployment(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) *v13.StatefulSe
 									Protocol:      "TCP",
 								},
 							},
-							LivenessProbe:   livenessProbe(),
-							ReadinessProbe:  readinessProbe(),
+							LivenessProbe:   livenessProbe(cr, keycloakContainerPosition),
+							ReadinessProbe:  readinessProbe(cr, keycloakContainerPosition),
 							Env:             getRHSSOEnv(cr, dbSecret),
-							Args:            cr.Spec.KeycloakDeploymentSpec.Experimental.Args,
-							Command:         cr.Spec.KeycloakDeploymentSpec.Experimental.Command,
-							VolumeMounts:    KeycloakVolumeMounts(cr, RhssoExtensionPath),
-							Resources:       getResources(cr),
+							Args:            cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Args,
+							Command:         cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Command,
+							VolumeMounts:    KeycloakVolumeMounts(cr, keycloakContainerPosition),
+							Resources:       getResources(cr, keycloakContainerPosition),
 							ImagePullPolicy: "Always",
 						},
 					},
@@ -188,6 +189,7 @@ func RHSSODeploymentSelector(cr *v1alpha1.Keycloak) client.ObjectKey {
 
 func RHSSODeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.StatefulSet, dbSecret *v1.Secret) *v13.StatefulSet {
 	reconciled := currentState.DeepCopy()
+	keycloakContainerPosition := findContainerInSlice(cr, KeycloakDeploymentName)
 	reconciled.ResourceVersion = currentState.ResourceVersion
 	reconciled.Spec.Replicas = SanitizeNumberOfReplicas(cr.Spec.Instances, false)
 	reconciled.Spec.Template.Spec.Volumes = KeycloakVolumes(cr)
@@ -195,11 +197,11 @@ func RHSSODeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.Stateful
 		{
 			Name:    KeycloakDeploymentName,
 			Image:   Images.Images[RHSSOImage],
-			Args:    cr.Spec.KeycloakDeploymentSpec.Experimental.Args,
-			Command: cr.Spec.KeycloakDeploymentSpec.Experimental.Command,
+			Args:    cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Args,
+			Command: cr.Spec.KeycloakDeploymentSpec.Containers[findContainerInSlice(cr, KeycloakDeploymentName)].Command,
 			Ports: []v1.ContainerPort{
 				{
-					ContainerPort: KeycloakServicePort,
+					ContainerPort: KeycloakHTTPSServicePort,
 					Protocol:      "TCP",
 				},
 				{
@@ -215,11 +217,11 @@ func RHSSODeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.Stateful
 					Protocol:      "TCP",
 				},
 			},
-			VolumeMounts:    KeycloakVolumeMounts(cr, RhssoExtensionPath),
-			LivenessProbe:   livenessProbe(),
-			ReadinessProbe:  readinessProbe(),
+			VolumeMounts:    KeycloakVolumeMounts(cr, keycloakContainerPosition),
+			LivenessProbe:   livenessProbe(cr, keycloakContainerPosition),
+			ReadinessProbe:  readinessProbe(cr, keycloakContainerPosition),
 			Env:             getRHSSOEnv(cr, dbSecret),
-			Resources:       getResources(cr),
+			Resources:       getResources(cr, keycloakContainerPosition),
 			ImagePullPolicy: "Always",
 		},
 	}

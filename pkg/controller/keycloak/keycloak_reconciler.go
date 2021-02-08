@@ -1,12 +1,12 @@
 package keycloak
 
 import (
+	"github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	kc "github.com/berestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
+	"github.com/berestyak/keycloak-operator/pkg/common"
 	"github.com/berestyak/keycloak-operator/pkg/model"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	kc "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"github.com/keycloak/keycloak-operator/pkg/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -216,6 +216,10 @@ func (i *KeycloakReconciler) GetKeycloakPrometheusRuleDesiredState(clusterState 
 
 func (i *KeycloakReconciler) GetKeycloakServiceMonitorDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
 	stateManager := common.GetStateManager()
+	// Deploy only if serviceMonitor: true
+	if !cr.Spec.ServiceMonitor {
+		return nil
+	}
 	resourceWatchExists, keyExists := stateManager.GetState(common.GetStateFieldName(ControllerName, monitoringv1.ServiceMonitorsKind)).(bool)
 	// Only add or update the monitoring resources if the resource type exists on the cluster. These booleans are set in the common/autodetect logic
 	if !keyExists || !resourceWatchExists {
@@ -240,6 +244,10 @@ func (i *KeycloakReconciler) GetKeycloakServiceMonitorDesiredState(clusterState 
 
 func (i *KeycloakReconciler) GetKeycloakGrafanaDashboardDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
 	stateManager := common.GetStateManager()
+	// Deploy only if grafanaDashboard: true
+	if !cr.Spec.GrafanaDashboard {
+		return nil
+	}
 	resourceWatchExists, keyExists := stateManager.GetState(common.GetStateFieldName(ControllerName, grafanav1alpha1.GrafanaDashboardKind)).(bool)
 	// Only add or update the monitoring resources if the resource type exists on the cluster. These booleans are set in the common/autodetect logic
 	if !keyExists || !resourceWatchExists {

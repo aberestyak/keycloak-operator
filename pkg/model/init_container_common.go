@@ -28,8 +28,8 @@ func KeycloakExtensionsInitContainers(cr *v1alpha1.Keycloak) []v1.Container {
 }
 
 func getInitContainerImageFromCR(cr *v1alpha1.Keycloak) string {
-	if cr.Spec.KeycloakDeploymentSpec.InitContainers[findContainerInSlice(cr, "extensions-init")].Image != "" {
-		return cr.Spec.KeycloakDeploymentSpec.InitContainers[findContainerInSlice(cr, "extensions-init")].Image
+	if cr.Spec.KeycloakDeploymentSpec.InitContainers[findInitContainerInSlice(cr, "extensions-init")].Image != "" {
+		return cr.Spec.KeycloakDeploymentSpec.InitContainers[findInitContainerInSlice(cr, "extensions-init")].Image
 	} else {
 		return DefaultKeycloakInitContainer
 	}

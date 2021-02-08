@@ -86,6 +86,7 @@ func KeycloakDeployment(cr *v1alpha1.Keycloak, dbSecret *v1.Secret) *v13.Statefu
 					specPod.Containers[keycloakContainerPosition].LivenessProbe = livenessProbe(cr, keycloakContainerPosition)
 					specPod.Containers[keycloakContainerPosition].ReadinessProbe = readinessProbe(cr, keycloakContainerPosition)
 					specPod.Volumes = KeycloakVolumes(cr)
+					specPod.InitContainers = KeycloakExtensionsInitContainers(cr)
 					return specPod
 				}(cr),
 			},
@@ -104,6 +105,7 @@ func KeycloakDeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.State
 	reconciled.Spec.Template.Spec.Containers[keycloakContainerPosition].VolumeMounts = KeycloakVolumeMounts(cr, keycloakContainerPosition)
 	reconciled.Spec.Template.Spec.Containers[keycloakContainerPosition].LivenessProbe = livenessProbe(cr, keycloakContainerPosition)
 	reconciled.Spec.Template.Spec.Containers[keycloakContainerPosition].ReadinessProbe = readinessProbe(cr, keycloakContainerPosition)
+	reconciled.Spec.Template.Spec.InitContainers = KeycloakExtensionsInitContainers(cr)
 	reconciled.Spec.Template.Spec.Volumes = KeycloakVolumes(cr)
 	return reconciled
 }

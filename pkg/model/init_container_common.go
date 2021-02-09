@@ -8,23 +8,22 @@ import (
 )
 
 func KeycloakExtensionsInitContainers(cr *v1alpha1.Keycloak) []v1.Container {
-	return []v1.Container{
-		{
-			Name:  "extensions-init",
-			Image: getInitContainerImageFromCR(cr),
-			Env:   getInitContainerEnv(cr),
-			VolumeMounts: []v1.VolumeMount{
+	initContainers := []v1.Container{}
+	for _, initContainer := range cr.Spec.KeycloakDeploymentSpec.InitContainers {
+		if initContainer.Name == "extensions-init" {
+			initContainer.Image = getInitContainerImageFromCR(cr)
+			initContainer.Env = getInitContainerEnv(cr)
+			initContainer.VolumeMounts = []v1.VolumeMount{
 				{
 					Name:      "keycloak-extensions",
 					ReadOnly:  false,
 					MountPath: KeycloakExtensionsInitContainerPath,
 				},
-			},
-			TerminationMessagePath:   "/dev/termination-log",
-			TerminationMessagePolicy: "File",
-			ImagePullPolicy:          "Always",
-		},
+			}
+		}
+		initContainers = append(initContainers, initContainer)
 	}
+	return initContainers
 }
 
 func getInitContainerImageFromCR(cr *v1alpha1.Keycloak) string {

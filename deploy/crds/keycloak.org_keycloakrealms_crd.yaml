@@ -403,6 +403,67 @@ spec:
                   description: Max Login Failures
                   format: int32
                   type: integer
+                groups:
+                  description: Groups
+                  items:
+                    description: KeycloakRealmGroup- struct for managing realm groups
+                    properties:
+                      access:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      attributes:
+                        additionalProperties:
+                          items:
+                            type: string
+                          type: array
+                        type: object
+                      clientRoles:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      path:
+                        type: string
+                      realmRoles:
+                        items:
+                          type: string
+                        type: array
+                      subGroups:
+                        items:
+                          description: KeycloakRealmSubGroup - struct for managing
+                            realm groups
+                          properties:
+                            access:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            attributes:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            clientRoles:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            id:
+                              type: string
+                            name:
+                              description: Group name
+                              type: string
+                            path:
+                              type: string
+                            realmRoles:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        type: array
+                    type: object
+                  type: array
                 id:
                   type: string
                 identityProviders:

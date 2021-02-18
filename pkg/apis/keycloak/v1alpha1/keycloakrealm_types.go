@@ -97,6 +97,9 @@ type KeycloakAPIRealm struct {
 	// Remember me
 	// +optional
 	RememberMe *bool `json:"rememberMe,omitempty"`
+	// Groups
+	// +optional
+	Groups []KeycloakRealmGroup `json:"groups,omitempty"`
 	// Verify email
 	// +optional
 	VerifyEmail *bool `json:"verifyEmail,omitempty"`
@@ -210,6 +213,43 @@ type KeycloakAPIUserFederationMapper struct {
 
 	// The displayName for the user federation provider this mapper applies to.
 	FederationProviderDisplayName string `json:"federationProviderDisplayName,omitempty"`
+}
+
+// KeycloakRealmGroup- struct for managing realm groups
+type KeycloakRealmGroup struct {
+	Name string `json:"name,omitempty"`
+	// +optional
+	ID string `json:"id,omitempty"`
+	// +optional
+	Access map[string]string `json:"access,omitempty"`
+	// +optional
+	Attributes map[string][]string `json:"attributes,omitempty"`
+	// +optional
+	ClientRoles map[string]string `json:"clientRoles,omitempty"`
+	// +optional
+	Path string `json:"path,omitempty"`
+	// +optional
+	RealmRoles []string `json:"realmRoles,omitempty"`
+	// +optional
+	SubGroup []KeycloakRealmSubGroup `json:"subGroups,omitempty"`
+}
+
+// KeycloakRealmSubGroup - struct for managing realm groups
+type KeycloakRealmSubGroup struct {
+	// Group name
+	Name string `json:"name,omitempty"`
+	// +optional
+	ID string `json:"id,omitempty"`
+	// +optional
+	Access map[string]string `json:"access,omitempty"`
+	// +optional
+	Attributes map[string]string `json:"attributes,omitempty"`
+	// +optional
+	ClientRoles map[string]string `json:"clientRoles,omitempty"`
+	// +optional
+	Path string `json:"path,omitempty"`
+	// +optional
+	RealmRoles []string `json:"realmRoles,omitempty"`
 }
 
 type KeycloakAPIAuthenticationFlow struct {

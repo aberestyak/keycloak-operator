@@ -23,24 +23,30 @@ func NewKeycloakRealmReconciler(keycloak kc.Keycloak) *KeycloakRealmReconciler {
 }
 
 func (i *KeycloakRealmReconciler) Reconcile(state *common.RealmState, cr *kc.KeycloakRealm) common.DesiredClusterState {
-	if cr.DeletionTimestamp == nil {
-		return i.ReconcileRealmCreate(state, cr)
-	}
-	return i.ReconcileRealmDelete(state, cr)
-}
-
-func (i *KeycloakRealmReconciler) ReconcileRealmCreate(state *common.RealmState, cr *kc.KeycloakRealm) common.DesiredClusterState {
 	desired := common.DesiredClusterState{}
+	// Create realm
+	if cr.DeletionTimestamp == nil {
+		desired.AddAction(i.getKeycloakDesiredState())
+		desired.AddAction(i.getNewRealmState(state, cr))
+		for _, user := range cr.Spec.Realm.Users {
+			desired.AddAction(i.getDesiredUserSate(state, cr, user))
+		}
 
-	desired.AddAction(i.getKeycloakDesiredState())
-	desired.AddAction(i.getDesiredRealmState(state, cr))
-
-	for _, user := range cr.Spec.Realm.Users {
-		desired.AddAction(i.getDesiredUserSate(state, cr, user))
+		desired.AddAction(i.getBrowserRedirectorDesiredState(state, cr))
 	}
-
-	desired.AddAction(i.getBrowserRedirectorDesiredState(state, cr))
-
+	// Delete realm
+	if cr.DeletionTimestamp != nil {
+		desired.AddAction(i.getDeletedRealmState(state, cr))
+		return desired
+	}
+	// Manage realm groups
+	if cr.Spec.Realm.Groups != nil {
+		desired.AddAction(i.getDesiredRealmGroups(state, cr))
+	}
+	// Update realm config if Federation provider
+	if cr.Spec.Realm.UserFederationProviders != nil {
+		desired.AddAction(i.getDesiredRealmState(state, cr))
+	}
 	return desired
 }
 
@@ -64,7 +70,6 @@ func (i *KeycloakRealmReconciler) getBrowserRedirectorDesiredState(state *common
 		return nil
 	}
 
-	// Never update the realm configuration, leave it up to the users
 	if state.Realm != nil {
 		return nil
 	}
@@ -75,13 +80,7 @@ func (i *KeycloakRealmReconciler) getBrowserRedirectorDesiredState(state *common
 	}
 }
 
-func (i *KeycloakRealmReconciler) getDesiredRealmState(state *common.RealmState, cr *kc.KeycloakRealm) common.ClusterAction {
-	if cr.DeletionTimestamp != nil {
-		return &common.DeleteRealmAction{
-			Ref: cr,
-			Msg: fmt.Sprintf("removing realm %v/%v", cr.Namespace, cr.Spec.Realm.Realm),
-		}
-	}
+func (i *KeycloakRealmReconciler) getNewRealmState(state *common.RealmState, cr *kc.KeycloakRealm) common.ClusterAction {
 
 	if state.Realm == nil {
 		return &common.CreateRealmAction{
@@ -89,7 +88,6 @@ func (i *KeycloakRealmReconciler) getDesiredRealmState(state *common.RealmState,
 			Msg: fmt.Sprintf("create realm %v/%v", cr.Namespace, cr.Spec.Realm.Realm),
 		}
 	}
-
 	return nil
 }
 
@@ -103,4 +101,27 @@ func (i *KeycloakRealmReconciler) getDesiredUserSate(state *common.RealmState, c
 	}
 
 	return nil
+}
+
+func (i *KeycloakRealmReconciler) getDeletedRealmState(state *common.RealmState, cr *kc.KeycloakRealm) common.ClusterAction {
+	return common.DeleteRealmAction{
+		Ref: cr,
+		Msg: fmt.Sprintf("removing realm %v/%v", cr.Namespace, cr.Spec.Realm.Realm),
+	}
+}
+
+func (i *KeycloakRealmReconciler) getDesiredRealmGroups(state *common.RealmState, cr *kc.KeycloakRealm) common.ClusterAction {
+	return &common.UpdateRealmGroupsAction{
+		Ref:   cr,
+		Realm: cr.Spec.Realm.Realm,
+		Msg:   fmt.Sprintf("update realm groups %v/%v", cr.Namespace, cr.Spec.Realm.Realm),
+	}
+}
+
+func (i *KeycloakRealmReconciler) getDesiredRealmState(state *common.RealmState, cr *kc.KeycloakRealm) common.ClusterAction {
+	return &common.UpdateRealmAction{
+		Ref:   cr,
+		Realm: cr.Spec.Realm.Realm,
+		Msg:   fmt.Sprintf("update realm %v/%v", cr.Namespace, cr.Spec.Realm.Realm),
+	}
 }

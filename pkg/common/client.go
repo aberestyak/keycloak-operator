@@ -1,15 +1,11 @@
 package common
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
@@ -38,54 +34,75 @@ type Client struct {
 // T is a generic type for keycloak spec resources
 type T interface{}
 
-// Generic create function for creating new Keycloak resources
-func (c *Client) create(obj T, resourcePath, resourceName string) (string, error) {
-	jsonValue, err := json.Marshal(obj)
-	if err != nil {
-		logrus.Errorf("error %+v marshalling object", err)
-		return "", nil
-	}
+//go:generate moq -out keycloakClient_moq.go . KeycloakInterface
+type KeycloakInterface interface {
+	Ping() error
 
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
-		bytes.NewBuffer(jsonValue),
-	)
-	if err != nil {
-		logrus.Errorf("error creating POST %s request %+v", resourceName, err)
-		return "", errors.Wrapf(err, "error creating POST %s request", resourceName)
-	}
+	Endpoint() string
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	res, err := c.requester.Do(req)
+	CreateRealm(realm *v1alpha1.KeycloakRealm) (string, error)
+	GetRealm(realmName string) (*v1alpha1.KeycloakRealm, error)
+	UpdateRealmGroups(specRealm *v1alpha1.KeycloakRealm) error
+	UpdateRealm(specRealm *v1alpha1.KeycloakRealm) error
+	DeleteRealm(realmName string) error
+	ListRealms() ([]*v1alpha1.KeycloakRealm, error)
 
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return "", errors.Wrapf(err, "error performing POST %s request", resourceName)
-	}
-	defer res.Body.Close()
+	CreateClient(client *v1alpha1.KeycloakAPIClient, realmName string) (string, error)
+	GetClient(clientID, realmName string) (*v1alpha1.KeycloakAPIClient, error)
+	GetClientSecret(clientID, realmName string) (string, error)
+	GetClientInstall(clientID, realmName string) ([]byte, error)
+	UpdateClient(specClient *v1alpha1.KeycloakAPIClient, realmName string) error
+	DeleteClient(clientID, realmName string) error
+	ListClients(realmName string) ([]*v1alpha1.KeycloakAPIClient, error)
 
-	if res.StatusCode != 201 && res.StatusCode != 204 {
-		return "", errors.Errorf("failed to create %s: (%d) %s", resourceName, res.StatusCode, res.Status)
-	}
+	CreateUser(user *v1alpha1.KeycloakAPIUser, realmName string) (string, error)
+	CreateFederatedIdentity(fid v1alpha1.FederatedIdentity, userID string, realmName string) (string, error)
+	RemoveFederatedIdentity(fid v1alpha1.FederatedIdentity, userID string, realmName string) error
+	GetUserFederatedIdentities(userName string, realmName string) ([]v1alpha1.FederatedIdentity, error)
+	UpdatePassword(user *v1alpha1.KeycloakAPIUser, realmName, newPass string) error
+	FindUserByEmail(email, realm string) (*v1alpha1.KeycloakAPIUser, error)
+	FindUserByUsername(name, realm string) (*v1alpha1.KeycloakAPIUser, error)
+	GetUser(userID, realmName string) (*v1alpha1.KeycloakAPIUser, error)
+	UpdateUser(specUser *v1alpha1.KeycloakAPIUser, realmName string) error
+	DeleteUser(userID, realmName string) error
+	ListUsers(realmName string) ([]*v1alpha1.KeycloakAPIUser, error)
 
-	if resourceName == "client" {
-		d, _ := ioutil.ReadAll(res.Body)
-		fmt.Println("user response ", string(d))
-	}
+	CreateIdentityProvider(identityProvider *v1alpha1.KeycloakIdentityProvider, realmName string) (string, error)
+	GetIdentityProvider(alias, realmName string) (*v1alpha1.KeycloakIdentityProvider, error)
+	UpdateIdentityProvider(specIdentityProvider *v1alpha1.KeycloakIdentityProvider, realmName string) error
+	DeleteIdentityProvider(alias, realmName string) error
+	ListIdentityProviders(realmName string) ([]*v1alpha1.KeycloakIdentityProvider, error)
 
-	location := strings.Split(res.Header.Get("Location"), "/")
-	uid := location[len(location)-1]
-	return uid, nil
+	CreateUserClientRole(role *v1alpha1.KeycloakUserRole, realmName, clientID, userID string) (string, error)
+	ListUserClientRoles(realmName, clientID, userID string) ([]*v1alpha1.KeycloakUserRole, error)
+	ListAvailableUserClientRoles(realmName, clientID, userID string) ([]*v1alpha1.KeycloakUserRole, error)
+	DeleteUserClientRole(role *v1alpha1.KeycloakUserRole, realmName, clientID, userID string) error
+
+	CreateUserRealmRole(role *v1alpha1.KeycloakUserRole, realmName, userID string) (string, error)
+	ListUserRealmRoles(realmName, userID string) ([]*v1alpha1.KeycloakUserRole, error)
+	ListAvailableUserRealmRoles(realmName, userID string) ([]*v1alpha1.KeycloakUserRole, error)
+	DeleteUserRealmRole(role *v1alpha1.KeycloakUserRole, realmName, userID string) error
+
+	ListAuthenticationExecutionsForFlow(flowAlias, realmName string) ([]*v1alpha1.AuthenticationExecutionInfo, error)
+
+	CreateAuthenticatorConfig(authenticatorConfig *v1alpha1.AuthenticatorConfig, realmName, executionID string) (string, error)
+	GetAuthenticatorConfig(configID, realmName string) (*v1alpha1.AuthenticatorConfig, error)
+	UpdateAuthenticatorConfig(authenticatorConfig *v1alpha1.AuthenticatorConfig, realmName string) error
+	DeleteAuthenticatorConfig(configID, realmName string) error
+}
+
+//go:generate moq -out keycloakClientFactory_moq.go . KeycloakClientFactory
+
+//KeycloakClientFactory interface
+type KeycloakClientFactory interface {
+	AuthenticatedClient(kc v1alpha1.Keycloak) (KeycloakInterface, error)
+}
+
+type LocalConfigKeycloakFactory struct {
 }
 
 func (c *Client) Endpoint() string {
 	return c.URL
-}
-
-func (c *Client) CreateRealm(realm *v1alpha1.KeycloakRealm) (string, error) {
-	return c.create(realm.Spec.Realm, "realms", "realm")
 }
 
 func (c *Client) CreateClient(client *v1alpha1.KeycloakAPIClient, realmName string) (string, error) {
@@ -212,67 +229,6 @@ func (c *Client) CreateIdentityProvider(identityProvider *v1alpha1.KeycloakIdent
 	return c.create(identityProvider, fmt.Sprintf("realms/%s/identity-provider/instances", realmName), "identity provider")
 }
 
-// Generic get function for returning a Keycloak resource
-func (c *Client) get(resourcePath, resourceName string, unMarshalFunc func(body []byte) (T, error)) (T, error) {
-	u := fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath)
-	req, err := http.NewRequest(
-		"GET",
-		u,
-		nil,
-	)
-	if err != nil {
-		logrus.Errorf("error creating GET %s request %+v", resourceName, err)
-		return nil, errors.Wrapf(err, "error creating GET %s request", resourceName)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	res, err := c.requester.Do(req)
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return nil, errors.Wrapf(err, "error performing GET %s request", resourceName)
-	}
-
-	defer res.Body.Close()
-	if res.StatusCode == 404 {
-		logrus.Errorf("Resource %v/%v doesn't exist", resourcePath, resourceName)
-		return nil, nil
-	}
-
-	if res.StatusCode != 200 {
-		return nil, errors.Errorf("failed to GET %s: (%d) %s", resourceName, res.StatusCode, res.Status)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		logrus.Errorf("error reading response %+v", err)
-		return nil, errors.Wrapf(err, "error reading %s GET response", resourceName)
-	}
-
-	obj, err := unMarshalFunc(body)
-	if err != nil {
-		logrus.Error(err)
-		return nil, err
-	}
-	return obj, nil
-}
-
-func (c *Client) GetRealm(realmName string) (*v1alpha1.KeycloakRealm, error) {
-	result, err := c.get(fmt.Sprintf("realms/%s", realmName), "realm", func(body []byte) (T, error) {
-		realm := &v1alpha1.KeycloakAPIRealm{}
-		err := json.Unmarshal(body, realm)
-		return realm, err
-	})
-	if result == nil {
-		return nil, nil
-	}
-	ret := &v1alpha1.KeycloakRealm{
-		Spec: v1alpha1.KeycloakRealmSpec{
-			Realm: result.(*v1alpha1.KeycloakAPIRealm),
-		},
-	}
-	return ret, err
-}
-
 func (c *Client) GetClient(clientID, realmName string) (*v1alpha1.KeycloakAPIClient, error) {
 	result, err := c.get(fmt.Sprintf("realms/%s/clients/%s", realmName, clientID), "client", func(body []byte) (T, error) {
 		client := &v1alpha1.KeycloakAPIClient{}
@@ -364,43 +320,6 @@ func (c *Client) GetAuthenticatorConfig(configID, realmName string) (*v1alpha1.A
 	return result.(*v1alpha1.AuthenticatorConfig), err
 }
 
-// Generic put function for updating Keycloak resources
-func (c *Client) update(obj T, resourcePath, resourceName string) error {
-	jsonValue, err := json.Marshal(obj)
-	if err != nil {
-		return nil
-	}
-
-	req, err := http.NewRequest(
-		"PUT",
-		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
-		bytes.NewBuffer(jsonValue),
-	)
-	if err != nil {
-		logrus.Errorf("error creating UPDATE %s request %+v", resourceName, err)
-		return errors.Wrapf(err, "error creating UPDATE %s request", resourceName)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+c.token)
-	res, err := c.requester.Do(req)
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return errors.Wrapf(err, "error performing UPDATE %s request", resourceName)
-	}
-	defer res.Body.Close()
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		logrus.Errorf("failed to UPDATE %s %v", resourceName, res.Status)
-		return errors.Errorf("failed to UPDATE %s: (%d) %s", resourceName, res.StatusCode, res.Status)
-	}
-
-	return nil
-}
-
-func (c *Client) UpdateRealm(realm *v1alpha1.KeycloakRealm) error {
-	return c.update(realm, fmt.Sprintf("realms/%s", realm.Spec.Realm.ID), "realm")
-}
-
 func (c *Client) UpdateClient(specClient *v1alpha1.KeycloakAPIClient, realmName string) error {
 	return c.update(specClient, fmt.Sprintf("realms/%s/clients/%s", realmName, specClient.ID), "client")
 }
@@ -415,57 +334,6 @@ func (c *Client) UpdateIdentityProvider(specIdentityProvider *v1alpha1.KeycloakI
 
 func (c *Client) UpdateAuthenticatorConfig(authenticatorConfig *v1alpha1.AuthenticatorConfig, realmName string) error {
 	return c.update(authenticatorConfig, fmt.Sprintf("realms/%s/authentication/config/%s", realmName, authenticatorConfig.ID), "AuthenticatorConfig")
-}
-
-// Generic delete function for deleting Keycloak resources
-func (c *Client) delete(resourcePath, resourceName string, obj T) error {
-	req, err := http.NewRequest(
-		"DELETE",
-		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
-		nil,
-	)
-
-	if obj != nil {
-		jsonValue, err := json.Marshal(obj)
-		if err != nil {
-			return nil
-		}
-		req, err = http.NewRequest(
-			"DELETE",
-			fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
-			bytes.NewBuffer(jsonValue),
-		)
-		if err != nil {
-			return nil
-		}
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	if err != nil {
-		logrus.Errorf("error creating DELETE %s request %+v", resourceName, err)
-		return errors.Wrapf(err, "error creating DELETE %s request", resourceName)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	res, err := c.requester.Do(req)
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return errors.Wrapf(err, "error performing DELETE %s request", resourceName)
-	}
-	defer res.Body.Close()
-	if res.StatusCode == 404 {
-		logrus.Errorf("Resource %v/%v already deleted", resourcePath, resourceName)
-	}
-	if res.StatusCode != 204 && res.StatusCode != 404 {
-		return errors.Errorf("failed to DELETE %s: (%d) %s", resourceName, res.StatusCode, res.Status)
-	}
-
-	return nil
-}
-
-func (c *Client) DeleteRealm(realmName string) error {
-	err := c.delete(fmt.Sprintf("realms/%s", realmName), "realm", nil)
-	return err
 }
 
 func (c *Client) DeleteClient(clientID, realmName string) error {
@@ -486,57 +354,6 @@ func (c *Client) DeleteIdentityProvider(alias string, realmName string) error {
 func (c *Client) DeleteAuthenticatorConfig(configID, realmName string) error {
 	err := c.delete(fmt.Sprintf("realms/%s/authentication/config/%s", realmName, configID), "AuthenticatorConfig", nil)
 	return err
-}
-
-// Generic list function for listing Keycloak resources
-func (c *Client) list(resourcePath, resourceName string, unMarshalListFunc func(body []byte) (T, error)) (T, error) {
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
-		nil,
-	)
-	if err != nil {
-		logrus.Errorf("error creating LIST %s request %+v", resourceName, err)
-		return nil, errors.Wrapf(err, "error creating LIST %s request", resourceName)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	res, err := c.requester.Do(req)
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return nil, errors.Wrapf(err, "error performing LIST %s request", resourceName)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return nil, errors.Errorf("failed to LIST %s: (%d) %s", resourceName, res.StatusCode, res.Status)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		logrus.Errorf("error reading response %+v", err)
-		return nil, errors.Wrapf(err, "error reading %s LIST response", resourceName)
-	}
-
-	objs, err := unMarshalListFunc(body)
-	if err != nil {
-		logrus.Error(err)
-	}
-
-	return objs, nil
-}
-
-func (c *Client) ListRealms() ([]*v1alpha1.KeycloakRealm, error) {
-	result, err := c.list("realms", "realm", func(body []byte) (T, error) {
-		var realms []*v1alpha1.KeycloakRealm
-		err := json.Unmarshal(body, &realms)
-		return realms, err
-	})
-	resultAsRealm, ok := result.([]*v1alpha1.KeycloakRealm)
-	if !ok {
-		return nil, err
-	}
-	return resultAsRealm, err
 }
 
 func (c *Client) ListClients(realmName string) ([]*v1alpha1.KeycloakAPIClient, error) {
@@ -678,52 +495,6 @@ func (c *Client) Ping() error {
 	return nil
 }
 
-// login requests a new auth token from Keycloak
-func (c *Client) login(user, pass string) error {
-	form := url.Values{}
-	form.Add("username", user)
-	form.Add("password", pass)
-	form.Add("client_id", "admin-cli")
-	form.Add("grant_type", "password")
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/%s", c.URL, authURL),
-		strings.NewReader(form.Encode()),
-	)
-	if err != nil {
-		return errors.Wrap(err, "error creating login request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	res, err := c.requester.Do(req)
-	if err != nil {
-		logrus.Errorf("error on request %+v", err)
-		return errors.Wrap(err, "error performing token request")
-	}
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		logrus.Errorf("error reading response %+v", err)
-		return errors.Wrap(err, "error reading token response")
-	}
-
-	tokenRes := &v1alpha1.TokenResponse{}
-	err = json.Unmarshal(body, tokenRes)
-	if err != nil {
-		return errors.Wrap(err, "error parsing token response")
-	}
-
-	if tokenRes.Error != "" {
-		logrus.Errorf("error with request: " + tokenRes.ErrorDescription)
-		return errors.Errorf(tokenRes.ErrorDescription)
-	}
-
-	c.token = tokenRes.AccessToken
-
-	return nil
-}
-
 // defaultRequester returns a default client for requesting http endpoints
 func defaultRequester() Requester {
 	transport := http.DefaultTransport.(*http.Transport).Clone()      // nolint
@@ -731,73 +502,6 @@ func defaultRequester() Requester {
 
 	c := &http.Client{Transport: transport, Timeout: time.Second * 10}
 	return c
-}
-
-//go:generate moq -out keycloakClient_moq.go . KeycloakInterface
-
-type KeycloakInterface interface {
-	Ping() error
-
-	Endpoint() string
-
-	CreateRealm(realm *v1alpha1.KeycloakRealm) (string, error)
-	GetRealm(realmName string) (*v1alpha1.KeycloakRealm, error)
-	UpdateRealm(specRealm *v1alpha1.KeycloakRealm) error
-	DeleteRealm(realmName string) error
-	ListRealms() ([]*v1alpha1.KeycloakRealm, error)
-
-	CreateClient(client *v1alpha1.KeycloakAPIClient, realmName string) (string, error)
-	GetClient(clientID, realmName string) (*v1alpha1.KeycloakAPIClient, error)
-	GetClientSecret(clientID, realmName string) (string, error)
-	GetClientInstall(clientID, realmName string) ([]byte, error)
-	UpdateClient(specClient *v1alpha1.KeycloakAPIClient, realmName string) error
-	DeleteClient(clientID, realmName string) error
-	ListClients(realmName string) ([]*v1alpha1.KeycloakAPIClient, error)
-
-	CreateUser(user *v1alpha1.KeycloakAPIUser, realmName string) (string, error)
-	CreateFederatedIdentity(fid v1alpha1.FederatedIdentity, userID string, realmName string) (string, error)
-	RemoveFederatedIdentity(fid v1alpha1.FederatedIdentity, userID string, realmName string) error
-	GetUserFederatedIdentities(userName string, realmName string) ([]v1alpha1.FederatedIdentity, error)
-	UpdatePassword(user *v1alpha1.KeycloakAPIUser, realmName, newPass string) error
-	FindUserByEmail(email, realm string) (*v1alpha1.KeycloakAPIUser, error)
-	FindUserByUsername(name, realm string) (*v1alpha1.KeycloakAPIUser, error)
-	GetUser(userID, realmName string) (*v1alpha1.KeycloakAPIUser, error)
-	UpdateUser(specUser *v1alpha1.KeycloakAPIUser, realmName string) error
-	DeleteUser(userID, realmName string) error
-	ListUsers(realmName string) ([]*v1alpha1.KeycloakAPIUser, error)
-
-	CreateIdentityProvider(identityProvider *v1alpha1.KeycloakIdentityProvider, realmName string) (string, error)
-	GetIdentityProvider(alias, realmName string) (*v1alpha1.KeycloakIdentityProvider, error)
-	UpdateIdentityProvider(specIdentityProvider *v1alpha1.KeycloakIdentityProvider, realmName string) error
-	DeleteIdentityProvider(alias, realmName string) error
-	ListIdentityProviders(realmName string) ([]*v1alpha1.KeycloakIdentityProvider, error)
-
-	CreateUserClientRole(role *v1alpha1.KeycloakUserRole, realmName, clientID, userID string) (string, error)
-	ListUserClientRoles(realmName, clientID, userID string) ([]*v1alpha1.KeycloakUserRole, error)
-	ListAvailableUserClientRoles(realmName, clientID, userID string) ([]*v1alpha1.KeycloakUserRole, error)
-	DeleteUserClientRole(role *v1alpha1.KeycloakUserRole, realmName, clientID, userID string) error
-
-	CreateUserRealmRole(role *v1alpha1.KeycloakUserRole, realmName, userID string) (string, error)
-	ListUserRealmRoles(realmName, userID string) ([]*v1alpha1.KeycloakUserRole, error)
-	ListAvailableUserRealmRoles(realmName, userID string) ([]*v1alpha1.KeycloakUserRole, error)
-	DeleteUserRealmRole(role *v1alpha1.KeycloakUserRole, realmName, userID string) error
-
-	ListAuthenticationExecutionsForFlow(flowAlias, realmName string) ([]*v1alpha1.AuthenticationExecutionInfo, error)
-
-	CreateAuthenticatorConfig(authenticatorConfig *v1alpha1.AuthenticatorConfig, realmName, executionID string) (string, error)
-	GetAuthenticatorConfig(configID, realmName string) (*v1alpha1.AuthenticatorConfig, error)
-	UpdateAuthenticatorConfig(authenticatorConfig *v1alpha1.AuthenticatorConfig, realmName string) error
-	DeleteAuthenticatorConfig(configID, realmName string) error
-}
-
-//go:generate moq -out keycloakClientFactory_moq.go . KeycloakClientFactory
-
-//KeycloakClientFactory interface
-type KeycloakClientFactory interface {
-	AuthenticatedClient(kc v1alpha1.Keycloak) (KeycloakInterface, error)
-}
-
-type LocalConfigKeycloakFactory struct {
 }
 
 // AuthenticatedClient returns an authenticated client for requesting endpoints from the Keycloak api

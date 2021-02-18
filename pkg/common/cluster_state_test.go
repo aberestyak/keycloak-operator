@@ -98,10 +98,5 @@ func prepareTestingClusterState() *ClusterState {
 			UpdateRevision:  "1",
 		},
 	}
-	clusterState.PostgresqlDeployment = &appsv1.Deployment{
-		Status: appsv1.DeploymentStatus{
-			Conditions: []appsv1.DeploymentCondition{},
-		},
-	}
 	return clusterState
 }

@@ -1,13 +1,11 @@
 package keycloak
 
 import (
-	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	kc "github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/aberestyak/keycloak-operator/pkg/common"
 	"github.com/aberestyak/keycloak-operator/pkg/model"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Reconciler interface {
@@ -29,44 +27,14 @@ func (i *KeycloakReconciler) Reconcile(clusterState *common.ClusterState, cr *kc
 	desired = desired.AddAction(i.GetKeycloakServiceMonitorDesiredState(clusterState, cr))
 	desired = desired.AddAction(i.GetKeycloakGrafanaDashboardDesiredState(clusterState, cr))
 
-	if !cr.Spec.ExternalDatabase.Enabled {
-		desired = desired.AddAction(i.getDatabaseSecretDesiredState(clusterState, cr))
-		desired = desired.AddAction(i.getPostgresqlPersistentVolumeClaimDesiredState(clusterState, cr))
-		desired = desired.AddAction(i.getPostgresqlDeploymentDesiredState(clusterState, cr))
-		desired = desired.AddAction(i.getPostgresqlServiceDesiredState(clusterState, cr, false))
-	} else {
-		i.reconcileExternalDatabase(&desired, clusterState, cr)
-	}
-
 	desired = desired.AddAction(i.getKeycloakServiceDesiredState(clusterState, cr))
 	desired = desired.AddAction(i.getKeycloakDiscoveryServiceDesiredState(clusterState, cr))
 	desired = desired.AddAction(i.GetKeycloakProbesDesiredState(clusterState, cr))
-	desired = desired.AddAction(i.getKeycloakDeploymentOrRHSSODesiredState(clusterState, cr))
+	desired = desired.AddAction(i.getKeycloakDeploymentDesiredState(clusterState, cr))
 	i.reconcileExternalAccess(&desired, clusterState, cr)
 	desired = desired.AddAction(i.getPodDisruptionBudgetDesiredState(clusterState, cr))
 
-	if cr.Spec.Migration.Backups.Enabled {
-		desired = desired.AddAction(i.getKeycloakBackupDesiredState(clusterState, cr))
-	}
 	return desired
-}
-
-func (i *KeycloakReconciler) reconcileExternalDatabase(desired *common.DesiredClusterState, clusterState *common.ClusterState, cr *kc.Keycloak) {
-	// If the database secret does not exist we can't continue
-	if clusterState.DatabaseSecret == nil {
-		return
-	}
-	if model.IsIP(clusterState.DatabaseSecret.Data[model.DatabaseSecretExternalAddressProperty]) {
-		// If the address of the external database is an IP address then we have to
-		// set up an endpoints object for the service to send traffic. An externalName
-		// type service won't work in this case. For more details, see https://cloud.google.com/blog/products/gcp/kubernetes-best-practices-mapping-external-services
-		desired.AddAction(i.getPostgresqlServiceEndpointsDesiredState(clusterState, cr))
-		desired.AddAction(i.getPostgresqlServiceDesiredState(clusterState, cr, false))
-	} else {
-		// If we have an URI for the external database then we can use a service of
-		// type externalName
-		desired.AddAction(i.getPostgresqlServiceDesiredState(clusterState, cr, true))
-	}
 }
 
 func (i *KeycloakReconciler) reconcileExternalAccess(desired *common.DesiredClusterState, clusterState *common.ClusterState, cr *kc.Keycloak) {
@@ -111,53 +79,6 @@ func (i *KeycloakReconciler) GetKeycloakProbesDesiredState(clusterState *common.
 		}
 	}
 	return nil
-}
-
-func (i *KeycloakReconciler) getPostgresqlPersistentVolumeClaimDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
-	postgresqlPersistentVolume := model.PostgresqlPersistentVolumeClaim(cr)
-	if clusterState.PostgresqlPersistentVolumeClaim == nil {
-		return common.GenericCreateAction{
-			Ref: postgresqlPersistentVolume,
-			Msg: "Create Postgresql PersistentVolumeClaim",
-		}
-	}
-	return common.GenericUpdateAction{
-		Ref: model.PostgresqlPersistentVolumeClaimReconciled(cr, clusterState.PostgresqlPersistentVolumeClaim),
-		Msg: "Update Postgresql PersistentVolumeClaim",
-	}
-}
-
-func (i *KeycloakReconciler) getPostgresqlServiceDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak, isExternal bool) common.ClusterAction {
-	postgresqlService := model.PostgresqlService(cr, clusterState.DatabaseSecret, isExternal)
-	if clusterState.PostgresqlService == nil {
-		return common.GenericCreateAction{
-			Ref: postgresqlService,
-			Msg: "Create Postgresql KeycloakService",
-		}
-	}
-	return common.GenericUpdateAction{
-		Ref: model.PostgresqlServiceReconciled(clusterState.PostgresqlService, clusterState.DatabaseSecret, isExternal),
-		Msg: "Update Postgresql KeycloakService",
-	}
-}
-
-func (i *KeycloakReconciler) getPostgresqlDeploymentDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
-	// Find out if we're on OpenShift or Kubernetes
-	stateManager := common.GetStateManager()
-	isOpenshift, _ := stateManager.GetState(common.OpenShiftAPIServerKind).(bool)
-
-	postgresqlDeployment := model.PostgresqlDeployment(cr, isOpenshift)
-
-	if clusterState.PostgresqlDeployment == nil {
-		return common.GenericCreateAction{
-			Ref: postgresqlDeployment,
-			Msg: "Create Postgresql Deployment",
-		}
-	}
-	return common.GenericUpdateAction{
-		Ref: model.PostgresqlDeploymentReconciled(cr, clusterState.PostgresqlDeployment),
-		Msg: "Update Postgresql Deployment",
-	}
 }
 
 func (i *KeycloakReconciler) getKeycloakServiceDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
@@ -283,16 +204,10 @@ func (i *KeycloakReconciler) getDatabaseSecretDesiredState(clusterState *common.
 	}
 }
 
-func (i *KeycloakReconciler) getKeycloakDeploymentOrRHSSODesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
-	isRHSSO := model.Profiles.IsRHSSO(cr)
+func (i *KeycloakReconciler) getKeycloakDeploymentDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
 
 	deployment := model.KeycloakDeployment(cr, clusterState.DatabaseSecret)
 	deploymentName := "Keycloak"
-
-	if isRHSSO {
-		deployment = model.RHSSODeployment(cr, clusterState.DatabaseSecret)
-		deploymentName = model.RHSSOProfile
-	}
 
 	if clusterState.KeycloakDeployment == nil {
 		return common.GenericCreateAction{
@@ -302,9 +217,6 @@ func (i *KeycloakReconciler) getKeycloakDeploymentOrRHSSODesiredState(clusterSta
 	}
 
 	deploymentReconciled := model.KeycloakDeploymentReconciled(cr, clusterState.KeycloakDeployment, clusterState.DatabaseSecret)
-	if isRHSSO {
-		deploymentReconciled = model.RHSSODeploymentReconciled(cr, clusterState.KeycloakDeployment, clusterState.DatabaseSecret)
-	}
 
 	return common.GenericUpdateAction{
 		Ref: deploymentReconciled,
@@ -340,17 +252,6 @@ func (i *KeycloakReconciler) getKeycloakIngressDesiredState(clusterState *common
 	}
 }
 
-func (i *KeycloakReconciler) getPostgresqlServiceEndpointsDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
-	if clusterState.PostgresqlServiceEndpoints == nil {
-		// This happens only during initial run
-		return nil
-	}
-	return common.GenericUpdateAction{
-		Ref: model.PostgresqlServiceEndpointsReconciled(cr, clusterState.PostgresqlServiceEndpoints, clusterState.DatabaseSecret),
-		Msg: "Update External Database Service Endpoints",
-	}
-}
-
 func (i *KeycloakReconciler) getPodDisruptionBudgetDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
 	if cr.Spec.PodDisruptionBudget.Enabled {
 		if clusterState.PodDisruptionBudget == nil {
@@ -365,27 +266,4 @@ func (i *KeycloakReconciler) getPodDisruptionBudgetDesiredState(clusterState *co
 		}
 	}
 	return nil
-}
-
-func (i *KeycloakReconciler) getKeycloakBackupDesiredState(clusterState *common.ClusterState, cr *kc.Keycloak) common.ClusterAction {
-	backupCr := &v1alpha1.KeycloakBackup{}
-	backupCr.Namespace = cr.Namespace
-	backupCr.Name = model.MigrateBackupName + "-" + common.BackupTime
-	labelSelect := metav1.LabelSelector{
-		MatchLabels: cr.Labels,
-	}
-	backupCr.Spec.InstanceSelector = &labelSelect
-	backupCr.Spec.StorageClassName = cr.Spec.StorageClassName
-
-	if clusterState.KeycloakBackup == nil {
-		// This happens before migration
-		return nil
-	}
-
-	keycloakbackup := model.KeycloakMigrationOneTimeBackup(backupCr)
-	keycloakbackup.ResourceVersion = clusterState.KeycloakBackup.ResourceVersion
-	return common.GenericUpdateAction{
-		Ref: keycloakbackup,
-		Msg: "Update Postgresql Backup for Keycloak Migration",
-	}
 }

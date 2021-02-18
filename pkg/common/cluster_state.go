@@ -9,7 +9,6 @@ import (
 	v13 "github.com/openshift/api/route/v1"
 	"k8s.io/api/extensions/v1beta1"
 
-	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	kc "github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/aberestyak/keycloak-operator/pkg/model"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
@@ -18,7 +17,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -27,6 +25,10 @@ var BackupTime string
 
 func init() {
 	BackupTime = time.Now().Format("20060102-150405")
+}
+
+func NewClusterState() *ClusterState {
+	return &ClusterState{}
 }
 
 // The desired cluster state is defined by a list of actions that have to be run to
@@ -48,23 +50,19 @@ func (d *DesiredClusterState) AddActions(actions []ClusterAction) DesiredCluster
 }
 
 type ClusterState struct {
-	KeycloakServiceMonitor          *monitoringv1.ServiceMonitor
-	KeycloakPrometheusRule          *monitoringv1.PrometheusRule
-	KeycloakGrafanaDashboard        *grafanav1alpha1.GrafanaDashboard
-	DatabaseSecret                  *v1.Secret
-	PostgresqlPersistentVolumeClaim *v1.PersistentVolumeClaim
-	PostgresqlService               *v1.Service
-	PostgresqlDeployment            *v12.Deployment
-	KeycloakService                 *v1.Service
-	KeycloakDiscoveryService        *v1.Service
-	KeycloakDeployment              *v12.StatefulSet
-	KeycloakAdminSecret             *v1.Secret
-	KeycloakIngress                 *v1beta1.Ingress
-	KeycloakRoute                   *v13.Route
-	PostgresqlServiceEndpoints      *v1.Endpoints
-	PodDisruptionBudget             *v1beta12.PodDisruptionBudget
-	KeycloakProbes                  *v1.ConfigMap
-	KeycloakBackup                  *v1alpha1.KeycloakBackup
+	KeycloakServiceMonitor     *monitoringv1.ServiceMonitor
+	KeycloakPrometheusRule     *monitoringv1.PrometheusRule
+	KeycloakGrafanaDashboard   *grafanav1alpha1.GrafanaDashboard
+	DatabaseSecret             *v1.Secret
+	KeycloakService            *v1.Service
+	KeycloakDiscoveryService   *v1.Service
+	KeycloakDeployment         *v12.StatefulSet
+	KeycloakAdminSecret        *v1.Secret
+	KeycloakIngress            *v1beta1.Ingress
+	KeycloakRoute              *v13.Route
+	PostgresqlServiceEndpoints *v1.Endpoints
+	PodDisruptionBudget        *v1beta12.PodDisruptionBudget
+	KeycloakProbes             *v1.ConfigMap
 }
 
 func (i *ClusterState) Read(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
@@ -101,26 +99,6 @@ func (i *ClusterState) Read(context context.Context, cr *kc.Keycloak, controller
 		return err
 	}
 
-	err = i.readPostgresqlPersistentVolumeClaimCurrentState(context, cr, controllerClient)
-	if err != nil {
-		return err
-	}
-
-	err = i.readPostgresqlDeploymentCurrentState(context, cr, controllerClient)
-	if err != nil {
-		return err
-	}
-
-	err = i.readPostgresqlServiceCurrentState(context, cr, controllerClient)
-	if err != nil {
-		return err
-	}
-
-	err = i.readPostgresqlServiceEndpointsCurrentState(context, cr, controllerClient)
-	if err != nil {
-		return err
-	}
-
 	err = i.readKeycloakServiceCurrentState(context, cr, controllerClient)
 	if err != nil {
 		return err
@@ -131,7 +109,7 @@ func (i *ClusterState) Read(context context.Context, cr *kc.Keycloak, controller
 		return err
 	}
 
-	err = i.readKeycloakOrRHSSODeploymentCurrentState(context, cr, controllerClient)
+	err = i.readKeycloakDeploymentCurrentState(context, cr, controllerClient)
 	if err != nil {
 		return err
 	}
@@ -151,11 +129,6 @@ func (i *ClusterState) Read(context context.Context, cr *kc.Keycloak, controller
 		if err != nil {
 			return err
 		}
-	}
-
-	err = i.readKeycloakBackupCurrentState(context, cr, controllerClient)
-	if err != nil {
-		return err
 	}
 
 	// Read other things
@@ -178,76 +151,6 @@ func (i *ClusterState) readKeycloakAdminSecretCurrentState(context context.Conte
 	} else {
 		i.KeycloakAdminSecret = keycloakAdminSecret.DeepCopy()
 		cr.UpdateStatusSecondaryResources(i.KeycloakAdminSecret.Kind, i.KeycloakAdminSecret.Name)
-	}
-	return nil
-}
-
-func (i *ClusterState) readPostgresqlPersistentVolumeClaimCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	postgresqlPersistentVolumeClaim := model.PostgresqlPersistentVolumeClaim(cr)
-	postgresqlPersistentVolumeClaimSelector := model.PostgresqlPersistentVolumeClaimSelector(cr)
-
-	err := controllerClient.Get(context, postgresqlPersistentVolumeClaimSelector, postgresqlPersistentVolumeClaim)
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return err
-		}
-	} else {
-		i.PostgresqlPersistentVolumeClaim = postgresqlPersistentVolumeClaim.DeepCopy()
-		cr.UpdateStatusSecondaryResources(i.PostgresqlPersistentVolumeClaim.Kind, i.PostgresqlPersistentVolumeClaim.Name)
-	}
-	return nil
-}
-
-func (i *ClusterState) readPostgresqlServiceCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	postgresqlService := model.PostgresqlService(cr, nil, false)
-	postgresqlServiceSelector := model.PostgresqlServiceSelector(cr)
-
-	err := controllerClient.Get(context, postgresqlServiceSelector, postgresqlService)
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return err
-		}
-	} else {
-		i.PostgresqlService = postgresqlService.DeepCopy()
-		cr.UpdateStatusSecondaryResources(i.PostgresqlService.Kind, i.PostgresqlService.Name)
-	}
-	return nil
-}
-
-func (i *ClusterState) readPostgresqlServiceEndpointsCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	postgresqlServiceEndpoints := model.PostgresqlServiceEndpoints(cr)
-	postgresqlServiceEndpointsSelector := model.PostgresqlServiceEndpointsSelector(cr)
-
-	err := controllerClient.Get(context, postgresqlServiceEndpointsSelector, postgresqlServiceEndpoints)
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return err
-		}
-	} else {
-		i.PostgresqlServiceEndpoints = postgresqlServiceEndpoints.DeepCopy()
-		if cr.Spec.ExternalDatabase.Enabled {
-			cr.UpdateStatusSecondaryResources(i.PostgresqlService.Kind, i.PostgresqlService.Name)
-		}
-	}
-	return nil
-}
-
-func (i *ClusterState) readPostgresqlDeploymentCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	// Find out if we're on OpenShift or Kubernetes
-	stateManager := GetStateManager()
-	isOpenshift, _ := stateManager.GetState(OpenShiftAPIServerKind).(bool)
-
-	postgresqlDeployment := model.PostgresqlDeployment(cr, isOpenshift)
-	postgresqlDeploymentSelector := model.PostgresqlDeploymentSelector(cr)
-
-	err := controllerClient.Get(context, postgresqlDeploymentSelector, postgresqlDeployment)
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return err
-		}
-	} else {
-		i.PostgresqlDeployment = postgresqlDeployment.DeepCopy()
-		cr.UpdateStatusSecondaryResources(i.PostgresqlDeployment.Kind, i.PostgresqlDeployment.Name)
 	}
 	return nil
 }
@@ -377,15 +280,10 @@ func (i *ClusterState) readProbesCurrentState(context context.Context, cr *kc.Ke
 	return nil
 }
 
-func (i *ClusterState) readKeycloakOrRHSSODeploymentCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	isRHSSO := model.Profiles.IsRHSSO(cr)
+func (i *ClusterState) readKeycloakDeploymentCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
 
 	deployment := model.KeycloakDeployment(cr, nil)
 	selector := model.KeycloakDeploymentSelector(cr)
-	if isRHSSO {
-		deployment = model.RHSSODeployment(cr, nil)
-		selector = model.RHSSODeploymentSelector(cr)
-	}
 
 	err := controllerClient.Get(context, selector, deployment)
 	if err != nil {
@@ -475,17 +373,6 @@ func (i *ClusterState) IsResourcesReady(cr *kc.Keycloak) (bool, error) {
 	// Default Route ready to true in case we are running on native Kubernetes
 	keycloakRouteReady := true
 
-	// Check keycloak postgres deployment is ready
-	postgresqlDeploymentReady, err := IsDeploymentReady(i.PostgresqlDeployment)
-	if err != nil {
-		return false, err
-	}
-
-	// If the instance is using an external database, always set to true
-	if cr.Spec.ExternalDatabase.Enabled {
-		postgresqlDeploymentReady = true
-	}
-
 	// If running on OpenShift, check the Route is ready
 	if cr.Spec.ExternalAccess.Enabled {
 		stateManager := GetStateManager()
@@ -495,30 +382,5 @@ func (i *ClusterState) IsResourcesReady(cr *kc.Keycloak) (bool, error) {
 		}
 	}
 
-	return keycloakDeploymentReady && postgresqlDeploymentReady && keycloakRouteReady, nil
-}
-
-// Read Custom Resource KeycloakBackup for migration backup
-func (i *ClusterState) readKeycloakBackupCurrentState(context context.Context, cr *kc.Keycloak, controllerClient client.Client) error {
-	labelSelect := metav1.LabelSelector{
-		MatchLabels: cr.Labels,
-	}
-	backupCr := &v1alpha1.KeycloakBackup{}
-	backupCr.Namespace = cr.Namespace
-	backupCr.Name = model.MigrateBackupName + "-" + BackupTime
-	backupCr.Spec.InstanceSelector = &labelSelect
-	backupCr.Spec.StorageClassName = cr.Spec.StorageClassName
-
-	KeycloakBackup := model.KeycloakMigrationOneTimeBackup(backupCr)
-	KeycloakBackupSelector := model.KeycloakMigrationOneTimeBackupSelector(backupCr)
-
-	err := controllerClient.Get(context, KeycloakBackupSelector, KeycloakBackup)
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return err
-		}
-	} else {
-		i.KeycloakBackup = KeycloakBackup.DeepCopy()
-	}
-	return nil
+	return keycloakDeploymentReady && keycloakRouteReady, nil
 }

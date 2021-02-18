@@ -189,16 +189,6 @@ func (r *ReconcileKeycloak) Reconcile(request reconcile.Request) (reconcile.Resu
 	reconciler := NewKeycloakReconciler()
 	desiredState := reconciler.Reconcile(currentState, instance)
 
-	// Perform migration if needed
-	migrator, err := GetMigrator(instance)
-	if err != nil {
-		return r.ManageError(instance, err)
-	}
-	desiredState, err = migrator.Migrate(instance, currentState, desiredState)
-	if err != nil {
-		return r.ManageError(instance, err)
-	}
-
 	// Run the actions to reach the desired state
 	actionRunner := common.NewClusterActionRunner(r.context, r.client, r.scheme, instance)
 	err = actionRunner.RunAll(desiredState)

@@ -2,14 +2,11 @@ package keycloak
 
 import (
 	"reflect"
-	"strconv"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/aberestyak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/aberestyak/keycloak-operator/pkg/common"
@@ -76,98 +73,11 @@ func TestKeycloakReconciler_Test_Creating_All(t *testing.T) {
 	assert.IsType(t, model.ServiceMonitor(cr), desiredState[2].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.GrafanaDashboard(cr), desiredState[3].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.DatabaseSecret(cr), desiredState[4].(common.GenericCreateAction).Ref)
-	assert.IsType(t, model.PostgresqlPersistentVolumeClaim(cr), desiredState[5].(common.GenericCreateAction).Ref)
-	assert.IsType(t, model.PostgresqlDeployment(cr, true), desiredState[6].(common.GenericCreateAction).Ref)
-	assert.IsType(t, model.PostgresqlService(cr, model.DatabaseSecret(cr), false), desiredState[7].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakService(cr), desiredState[8].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDiscoveryService(cr), desiredState[9].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakProbes(cr), desiredState[10].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDeployment(cr, model.DatabaseSecret(cr)), desiredState[11].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakRoute(cr), desiredState[12].(common.GenericCreateAction).Ref)
-}
-
-func TestKeycloakReconciler_Test_Creating_RHSSO(t *testing.T) {
-	// given
-	cr := &v1alpha1.Keycloak{
-		Spec: v1alpha1.KeycloakSpec{
-			ExternalAccess: v1alpha1.KeycloakExternalAccess{
-				Enabled: true,
-			},
-			Profile: model.RHSSOProfile,
-		},
-	}
-	currentState := common.NewClusterState()
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var allCreateActions = true
-	var deployment *v13.StatefulSet
-	var ingress *v1beta1.Ingress
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) != reflect.TypeOf(common.GenericCreateAction{}) {
-			allCreateActions = false
-		}
-		if reflect.TypeOf(v.(common.GenericCreateAction).Ref) == reflect.TypeOf(model.RHSSODeployment(cr, model.DatabaseSecret(cr))) {
-			deployment = v.(common.GenericCreateAction).Ref.(*v13.StatefulSet)
-		}
-		if reflect.TypeOf(v.(common.GenericCreateAction).Ref) == reflect.TypeOf(model.KeycloakIngress(cr)) {
-			ingress = v.(common.GenericCreateAction).Ref.(*v1beta1.Ingress)
-		}
-	}
-	assert.True(t, allCreateActions)
-	assert.NotNil(t, deployment)
-	assert.NotNil(t, ingress)
-	assert.Equal(t, model.RHSSODeployment(cr, nil), deployment)
-}
-
-func TestKeycloakReconciler_Test_Updating_RHSSO(t *testing.T) {
-	// given
-	cr := &v1alpha1.Keycloak{
-		Spec: v1alpha1.KeycloakSpec{
-			ExternalAccess: v1alpha1.KeycloakExternalAccess{
-				Enabled: true,
-			},
-			Profile:   model.RHSSOProfile,
-			Instances: 1,
-		},
-	}
-	currentState := &common.ClusterState{
-		KeycloakServiceMonitor:          model.ServiceMonitor(cr),
-		KeycloakPrometheusRule:          model.PrometheusRule(cr),
-		KeycloakGrafanaDashboard:        model.GrafanaDashboard(cr),
-		DatabaseSecret:                  model.DatabaseSecret(cr),
-		PostgresqlPersistentVolumeClaim: model.PostgresqlPersistentVolumeClaim(cr),
-		PostgresqlService:               model.PostgresqlService(cr, model.DatabaseSecret(cr), false),
-		PostgresqlDeployment:            model.PostgresqlDeployment(cr, true),
-		KeycloakService:                 model.KeycloakService(cr),
-		KeycloakDiscoveryService:        model.KeycloakDiscoveryService(cr),
-		KeycloakDeployment:              model.RHSSODeployment(cr, model.DatabaseSecret(cr)),
-		KeycloakAdminSecret:             model.KeycloakAdminSecret(cr),
-		KeycloakIngress:                 model.KeycloakIngress(cr),
-		KeycloakProbes:                  model.KeycloakProbes(cr),
-	}
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var allUpdateActions = true
-	var deployment *v13.StatefulSet
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) != reflect.TypeOf(common.GenericUpdateAction{}) {
-			allUpdateActions = false
-		}
-		if reflect.TypeOf(v.(common.GenericUpdateAction).Ref) == reflect.TypeOf(model.RHSSODeployment(cr, model.DatabaseSecret(cr))) {
-			deployment = v.(common.GenericUpdateAction).Ref.(*v13.StatefulSet)
-		}
-	}
-	assert.True(t, allUpdateActions)
-	assert.NotNil(t, deployment)
-	assert.Equal(t, model.RHSSODeployment(cr, model.DatabaseSecret(cr)), deployment)
 }
 
 func TestKeycloakReconciler_Test_Updating_All(t *testing.T) {
@@ -178,19 +88,16 @@ func TestKeycloakReconciler_Test_Updating_All(t *testing.T) {
 	}
 
 	currentState := &common.ClusterState{
-		KeycloakServiceMonitor:          model.ServiceMonitor(cr),
-		KeycloakPrometheusRule:          model.PrometheusRule(cr),
-		KeycloakGrafanaDashboard:        model.GrafanaDashboard(cr),
-		DatabaseSecret:                  model.DatabaseSecret(cr),
-		PostgresqlPersistentVolumeClaim: model.PostgresqlPersistentVolumeClaim(cr),
-		PostgresqlService:               model.PostgresqlService(cr, model.DatabaseSecret(cr), false),
-		PostgresqlDeployment:            model.PostgresqlDeployment(cr, true),
-		KeycloakService:                 model.KeycloakService(cr),
-		KeycloakDiscoveryService:        model.KeycloakDiscoveryService(cr),
-		KeycloakDeployment:              model.KeycloakDeployment(cr, model.DatabaseSecret(cr)),
-		KeycloakAdminSecret:             model.KeycloakAdminSecret(cr),
-		KeycloakRoute:                   model.KeycloakRoute(cr),
-		KeycloakProbes:                  model.KeycloakProbes(cr),
+		KeycloakServiceMonitor:   model.ServiceMonitor(cr),
+		KeycloakPrometheusRule:   model.PrometheusRule(cr),
+		KeycloakGrafanaDashboard: model.GrafanaDashboard(cr),
+		DatabaseSecret:           model.DatabaseSecret(cr),
+		KeycloakService:          model.KeycloakService(cr),
+		KeycloakDiscoveryService: model.KeycloakDiscoveryService(cr),
+		KeycloakDeployment:       model.KeycloakDeployment(cr, model.DatabaseSecret(cr)),
+		KeycloakAdminSecret:      model.KeycloakAdminSecret(cr),
+		KeycloakRoute:            model.KeycloakRoute(cr),
+		KeycloakProbes:           model.KeycloakProbes(cr),
 	}
 
 	//Set monitoring resources exist to true
@@ -238,9 +145,6 @@ func TestKeycloakReconciler_Test_Updating_All(t *testing.T) {
 	assert.IsType(t, model.ServiceMonitor(cr), desiredState[2].(common.GenericUpdateAction).Ref)
 	assert.IsType(t, model.GrafanaDashboard(cr), desiredState[3].(common.GenericUpdateAction).Ref)
 	assert.IsType(t, model.DatabaseSecret(cr), desiredState[4].(common.GenericUpdateAction).Ref)
-	assert.IsType(t, model.PostgresqlPersistentVolumeClaim(cr), desiredState[5].(common.GenericUpdateAction).Ref)
-	assert.IsType(t, model.PostgresqlDeployment(cr, true), desiredState[6].(common.GenericUpdateAction).Ref)
-	assert.IsType(t, model.PostgresqlService(cr, model.DatabaseSecret(cr), false), desiredState[7].(common.GenericUpdateAction).Ref)
 	assert.IsType(t, model.KeycloakService(cr), desiredState[8].(common.GenericUpdateAction).Ref)
 	assert.IsType(t, model.KeycloakDiscoveryService(cr), desiredState[9].(common.GenericUpdateAction).Ref)
 	assert.IsType(t, model.KeycloakDeployment(cr, model.DatabaseSecret(cr)), desiredState[10].(common.GenericUpdateAction).Ref)
@@ -292,183 +196,10 @@ func TestKeycloakReconciler_Test_Creating_All_With_External_Database(t *testing.
 	assert.IsType(t, common.GenericCreateAction{}, desiredState[4])
 	assert.IsType(t, common.GenericCreateAction{}, desiredState[5])
 	assert.IsType(t, model.DatabaseSecret(cr), desiredState[0].(common.GenericCreateAction).Ref)
-	assert.IsType(t, model.PostgresqlService(cr, model.DatabaseSecret(cr), false), desiredState[1].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakService(cr), desiredState[2].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDiscoveryService(cr), desiredState[3].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakProbes(cr), desiredState[4].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDeployment(cr, model.DatabaseSecret(cr)), desiredState[5].(common.GenericCreateAction).Ref)
-}
-
-func TestKeycloakReconciler_Test_Updating_External_Database(t *testing.T) {
-	// given
-	cr := &v1alpha1.Keycloak{}
-	cr.Spec.ExternalDatabase.Enabled = true
-
-	currentState := common.NewClusterState()
-	currentState.PostgresqlServiceEndpoints = model.PostgresqlServiceEndpoints(cr)
-	currentState.DatabaseSecret = model.DatabaseSecret(cr)
-	// This conversion is done my K8s. In the tests, we need to fake it.
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte("10.10.10.1"),
-		model.DatabaseSecretExternalPortProperty:    []byte("5432"),
-	}
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var endpoints *v1.Endpoints
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) == reflect.TypeOf(common.GenericUpdateAction{}) {
-			if reflect.TypeOf(v.(common.GenericUpdateAction).Ref) == reflect.TypeOf(model.PostgresqlServiceEndpoints(cr)) {
-				endpoints = v.(common.GenericUpdateAction).Ref.(*v1.Endpoints)
-			}
-		}
-	}
-	assert.NotNil(t, endpoints)
-	assert.Equal(t, model.PostgresqlServiceEndpointsReconciled(cr, currentState.PostgresqlServiceEndpoints, currentState.DatabaseSecret), endpoints)
-}
-
-func TestKeycloakReconciler_Test_Updating_External_Database_URI(t *testing.T) {
-	// given
-	cr := &v1alpha1.Keycloak{}
-	cr.Spec.ExternalDatabase.Enabled = true
-
-	currentState := common.NewClusterState()
-	currentState.PostgresqlServiceEndpoints = model.PostgresqlServiceEndpoints(cr)
-	currentState.DatabaseSecret = model.DatabaseSecret(cr)
-	// This conversion is done my K8s. In the tests, we need to fake it.
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte("host.example.database.location"),
-		model.DatabaseSecretExternalPortProperty:    []byte("5432"),
-	}
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var service *v1.Service
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) == reflect.TypeOf(common.GenericCreateAction{}) {
-			if reflect.TypeOf(v.(common.GenericCreateAction).Ref) == reflect.TypeOf(model.PostgresqlService(cr, currentState.DatabaseSecret, true)) {
-				s := v.(common.GenericCreateAction).Ref.(*v1.Service)
-				if s.Name == model.PostgresqlServiceName {
-					service = s
-				}
-			}
-		}
-	}
-	assert.NotNil(t, service)
-	assert.Equal(t, service.Spec.Type, v1.ServiceTypeExternalName)
-	assert.Equal(t, service.Spec.ExternalName, string(currentState.DatabaseSecret.Data[model.DatabaseSecretExternalAddressProperty]))
-}
-
-func TestKeycloakReconciler_Test_Updating_External_Database_URI_From_IP_To_ExternalName(t *testing.T) {
-	// given
-	const (
-		oldIP           = "1.2.3.4"
-		oldPort         = 1234
-		newExternalname = "host.example.database.location"
-		newPort         = 5432
-	)
-	cr := &v1alpha1.Keycloak{}
-	cr.Spec.ExternalDatabase.Enabled = true
-
-	currentState := common.NewClusterState()
-	currentState.PostgresqlServiceEndpoints = model.PostgresqlServiceEndpoints(cr)
-	currentState.DatabaseSecret = model.DatabaseSecret(cr)
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte(oldIP),
-		model.DatabaseSecretExternalPortProperty:    []byte(strconv.Itoa(oldPort)),
-	}
-
-	currentState.PostgresqlService = model.PostgresqlService(cr, currentState.DatabaseSecret, false)
-
-	// This conversion is done my K8s. In the tests, we need to fake it.
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte(newExternalname),
-		model.DatabaseSecretExternalPortProperty:    []byte(strconv.Itoa(newPort)),
-	}
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var service *v1.Service
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) == reflect.TypeOf(common.GenericUpdateAction{}) {
-			if reflect.TypeOf(v.(common.GenericUpdateAction).Ref) == reflect.TypeOf(model.PostgresqlService(cr, currentState.DatabaseSecret, true)) {
-				s := v.(common.GenericUpdateAction).Ref.(*v1.Service)
-				if s.Name == model.PostgresqlServiceName {
-					service = s
-				}
-			}
-		}
-	}
-	assert.NotNil(t, service)
-	assert.Equal(t, service.Spec.Type, v1.ServiceTypeExternalName)
-	assert.Equal(t, service.Spec.ExternalName, string(currentState.DatabaseSecret.Data[model.DatabaseSecretExternalAddressProperty]))
-	assert.Equal(t, service.Spec.Ports[0].Port, int32(newPort))
-}
-
-func TestKeycloakReconciler_Test_Updating_External_Database_From_ExternalName_To_IP(t *testing.T) {
-	// given
-	const (
-		oldExternalname = "host.example.database.location"
-		oldPort         = 1234
-		newIP           = "1.2.3.4"
-		newPort         = 5432
-	)
-	cr := &v1alpha1.Keycloak{}
-	cr.Spec.ExternalDatabase.Enabled = true
-
-	currentState := common.NewClusterState()
-	currentState.DatabaseSecret = model.DatabaseSecret(cr)
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte(oldExternalname),
-		model.DatabaseSecretExternalPortProperty:    []byte(strconv.Itoa(oldPort)),
-	}
-
-	currentState.PostgresqlService = model.PostgresqlService(cr, currentState.DatabaseSecret, false)
-
-	// This conversion is done my K8s. In the tests, we need to fake it.
-	currentState.DatabaseSecret.Data = map[string][]byte{
-		model.DatabaseSecretExternalAddressProperty: []byte(newIP),
-		model.DatabaseSecretExternalPortProperty:    []byte(strconv.Itoa(newPort)),
-	}
-	currentState.PostgresqlServiceEndpoints = model.PostgresqlServiceEndpoints(cr)
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	var service *v1.Service
-	var endpoints *v1.Endpoints
-	for _, v := range desiredState {
-		if reflect.TypeOf(v) == reflect.TypeOf(common.GenericUpdateAction{}) {
-			if reflect.TypeOf(v.(common.GenericUpdateAction).Ref) == reflect.TypeOf(model.PostgresqlService(cr, currentState.DatabaseSecret, true)) {
-				s := v.(common.GenericUpdateAction).Ref.(*v1.Service)
-				if s.Name == model.PostgresqlServiceName {
-					service = s
-				}
-			}
-		}
-		if reflect.TypeOf(v) == reflect.TypeOf(common.GenericUpdateAction{}) {
-			if reflect.TypeOf(v.(common.GenericUpdateAction).Ref) == reflect.TypeOf(model.PostgresqlServiceEndpoints(cr)) {
-				endpoints = v.(common.GenericUpdateAction).Ref.(*v1.Endpoints)
-			}
-		}
-	}
-	assert.NotNil(t, service)
-	assert.Equal(t, service.Spec.Type, v1.ServiceTypeClusterIP)
-	assert.Equal(t, model.PostgresqlServiceEndpointsReconciled(cr, currentState.PostgresqlServiceEndpoints, currentState.DatabaseSecret), endpoints)
-	assert.Equal(t, service.Spec.ExternalName, "")
-	assert.Equal(t, endpoints.Subsets[0].Ports[0].Port, int32(newPort))
-	assert.Equal(t, endpoints.Subsets[0].Addresses[0].IP, newIP)
 }
 
 func TestKeycloakReconciler_Test_Recreate_Credentials_When_Missig(t *testing.T) {
@@ -584,7 +315,6 @@ func TestKeycloakReconciler_Test_Setting_Resources(t *testing.T) {
 	//    6) Postgresql Deployment
 	//    11) Keycloak StatefulSets
 	assert.Equal(t, len(desiredState), 13)
-	assert.IsType(t, model.PostgresqlDeployment(cr, false), desiredState[6].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDeployment(cr, model.DatabaseSecret(cr)), desiredState[11].(common.GenericCreateAction).Ref)
 	keycloakContainer := desiredState[11].(common.GenericCreateAction).Ref.(*v13.StatefulSet).Spec.Template.Spec.Containers[0]
 	assert.Equal(t, &resource700Mi, keycloakContainer.Resources.Requests.Memory(), "Keycloak Deployment: Memory-Requests should be: "+resource700Mi.String()+" but is "+keycloakContainer.Resources.Requests.Memory().String())
@@ -623,7 +353,6 @@ func TestKeycloakReconciler_Test_No_Resources_Specified(t *testing.T) {
 	//    6) Postgresql Deployment
 	//    11) Keycloak StatefulSets
 	assert.Equal(t, len(desiredState), 13)
-	assert.IsType(t, model.PostgresqlDeployment(cr, true), desiredState[6].(common.GenericCreateAction).Ref)
 	assert.IsType(t, model.KeycloakDeployment(cr, model.DatabaseSecret(cr)), desiredState[11].(common.GenericCreateAction).Ref)
 	keycloakContainer := desiredState[11].(common.GenericCreateAction).Ref.(*v13.StatefulSet).Spec.Template.Spec.Containers[0]
 	assert.Equal(t, 0, len(keycloakContainer.Resources.Requests), "Requests-List should be empty")
@@ -654,35 +383,4 @@ func TestKeycloakReconciler_Test_Proxy_Settings(t *testing.T) {
 		}
 	}
 	assert.True(t, proxySet)
-}
-
-func TestKeycloakReconciler_Test_Should_Create_Backup(t *testing.T) {
-	// given
-	cr := &v1alpha1.Keycloak{}
-	cr.Spec.Migration.Backups.Enabled = true
-	backupCr := &v1alpha1.KeycloakBackup{}
-	labelSelect := metav1.LabelSelector{
-		MatchLabels: cr.Labels,
-	}
-
-	currentState := common.NewClusterState()
-	currentState.KeycloakBackup = &v1alpha1.KeycloakBackup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      model.MigrateBackupName + "-" + common.BackupTime,
-			Namespace: cr.Namespace,
-			Labels:    cr.Labels,
-		},
-		Spec: v1alpha1.KeycloakBackupSpec{
-			InstanceSelector: &labelSelect,
-		},
-	}
-
-	// when
-	reconciler := NewKeycloakReconciler()
-	desiredState := reconciler.Reconcile(currentState, cr)
-
-	// then
-	assert.Equal(t, len(desiredState), 10)
-	assert.IsType(t, common.GenericUpdateAction{}, desiredState[9])
-	assert.IsType(t, model.KeycloakMigrationOneTimeBackup(backupCr), desiredState[9].(common.GenericUpdateAction).Ref)
 }
